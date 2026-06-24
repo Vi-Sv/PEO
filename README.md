@@ -22,29 +22,66 @@
 ' Данный макрос локально выравнивает единицы измерения к м2, 
 ' корректируя объемы (× коэффициент) и нормы расхода (/ коэффициент).
 Sub ConvertUnitsToM2_Final()
-    Dim ws As Worksheet: Set ws = ActiveSheet
-    Dim lastRow As Long: lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
-    Dim i As Long, unitStr As String, coef As Double
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim i As Long
+    Dim unitStr As String
+    Dim coef As Double
+    
+    Set ws = ActiveSheet
+    lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
     
     Application.ScreenUpdating = False
+    
+    ' Цикл идет со 2-й строки, так как 1-я строка — это шапка
     For i = 2 To lastRow
-        unitStr = Replace(Trim(ws.Cells(i, 6).Value), " ", ""): unitStr = LCase(unitStr)
-        coef = 1
-        If unitStr Like "*10м2*" Then coef = 10
-        ElseIf unitStr Like "*100м2*" Or unitStr = "100м" Then coef = 100
-        ElseIf unitStr Like "*1000м2*" Then coef = 1000
+        ' Берем Ед.изм. из 6-й колонки (столбец F)
+        unitStr = Trim(ws.Cells(i, 6).Value)
+        unitStr = Replace(unitStr, " ", "")
+        unitStr = LCase(unitStr)
         
+        coef = 1
+        
+        ' Точное определение коэффициента пересчета
+        If unitStr Like "*10м2*" Then
+            coef = 10
+        ElseIf unitStr Like "*100м2*" Or unitStr = "100м" Then
+            coef = 100
+        ElseIf unitStr Like "*1000м2*" Then
+            coef = 1000
+        End If
+        
+        ' Если нашли укрупненную единицу — пересчитываем строки
         If coef > 1 Then
-            If IsNumeric(ws.Cells(i, 3).Value) And ws.Cells(i, 3).Value <> "" Then ws.Cells(i, 3).Value = ws.Cells(i, 3).Value * coef
-            If IsNumeric(ws.Cells(i, 4).Value) And ws.Cells(i, 4).Value <> "" Then ws.Cells(i, 4).Value = ws.Cells(i, 4).Value * coef
-            If IsNumeric(ws.Cells(i, 5).Value) And ws.Cells(i, 5).Value <> "" Then ws.Cells(i, 5).Value = ws.Cells(i, 5).Value * coef
+            ' Столбец 3: Объем (Исходный) -> Умножаем
+            If IsNumeric(ws.Cells(i, 3).Value) And ws.Cells(i, 3).Value <> "" Then
+                ws.Cells(i, 3).Value = ws.Cells(i, 3).Value * coef
+            End If
+            
+            ' Столбец 4: Вып. до 04.2026 -> Умножаем
+            If IsNumeric(ws.Cells(i, 4).Value) And ws.Cells(i, 4).Value <> "" Then
+                ws.Cells(i, 4).Value = ws.Cells(i, 4).Value * coef
+            End If
+            
+            ' Столбец 5: План на объем Begin -> Умножаем
+            If IsNumeric(ws.Cells(i, 5).Value) And ws.Cells(i, 5).Value <> "" Then
+                ws.Cells(i, 5).Value = ws.Cells(i, 5).Value * coef
+            End If
+            
+            ' Столбец 6: Переименовываем в м2
             ws.Cells(i, 6).Value = "м2"
-            If IsNumeric(ws.Cells(i, 7).Value) And ws.Cells(i, 7).Value <> "" Then ws.Cells(i, 7).Value = ws.Cells(i, 7).Value / coef
+            
+            ' Столбец 7: Норма расхода ч/ч -> Делим
+            If IsNumeric(ws.Cells(i, 7).Value) And ws.Cells(i, 7).Value <> "" Then
+                ws.Cells(i, 7).Value = ws.Cells(i, 7).Value / coef
+            End If
         End If
     Next i
+    
     Application.ScreenUpdating = True
-    MsgBox "База жестко выровнена!", vbInformation
+    MsgBox "Готово! Все единицы приведены к м2, объемы и нормы жестко пересчитаны.", vbInformation, "Успех"
 End Sub
+
 ```
 
 ## Архитектурная модель Оператора (Формула Симбиоза)
