@@ -21,66 +21,74 @@
 ```vba
 ' Данный макрос локально выравнивает единицы измерения к м2, 
 ' корректируя объемы (× коэффициент) и нормы расхода (/ коэффициент).
-Sub ConvertUnitsToM2_Final()
+Sub ConvertUnitsToM2_StrictSafe()
     Dim ws As Worksheet
     Dim lastRow As Long
     Dim i As Long
     Dim unitStr As String
     Dim coef As Double
     
+    ' Работаем строго с текущим активным листом Excel
     Set ws = ActiveSheet
+    
+    ' Находим последнюю заполненную строку по Столбцу 1 (А)
     lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
     
+    ' Выключаем обновление экрана для моментального расчета
     Application.ScreenUpdating = False
     
-    ' Цикл идет со 2-й строки, так как 1-я строка — это шапка
+    ' Начинаем со 2-й строки, так как 1-я — это шапка таблицы
     For i = 2 To lastRow
-        ' Берем Ед.изм. из 6-й колонки (столбец F)
+        ' Важнейший сброс: для каждой новой строки коэффициент равен 1
+        coef = 1
+        
+        ' Берем текст из Столбца 6 (Ед.изм.), убираем пробелы и переводим в строчные буквы
         unitStr = Trim(ws.Cells(i, 6).Value)
         unitStr = Replace(unitStr, " ", "")
         unitStr = LCase(unitStr)
         
-        coef = 1
-        
-        ' Точное определение коэффициента пересчета
-        If unitStr Like "*10м2*" Then
+        ' Жесткая проверка на абсолютное совпадение текстовых строк
+        If unitStr = "10м2" Then
             coef = 10
-        ElseIf unitStr Like "*100м2*" Or unitStr = "100м" Then
+        ElseIf unitStr = "100м2" Or unitStr = "100м" Then
             coef = 100
-        ElseIf unitStr Like "*1000м2*" Then
+        ElseIf unitStr = "1000м2" Then
             coef = 1000
         End If
         
-        ' Если нашли укрупненную единицу — пересчитываем строки
+        ' Точечный пересчет запускается ТОЛЬКО если найден укрупненный коэффициент
         If coef > 1 Then
-            ' Столбец 3: Объем (Исходный) -> Умножаем
+            ' Столбец 3: Объем (Исходный) -> Умножаем на коэффициент
             If IsNumeric(ws.Cells(i, 3).Value) And ws.Cells(i, 3).Value <> "" Then
                 ws.Cells(i, 3).Value = ws.Cells(i, 3).Value * coef
             End If
             
-            ' Столбец 4: Вып. до 04.2026 -> Умножаем
+            ' Столбец 4: Вып. до 04.2026 -> Умножаем на коэффициент
             If IsNumeric(ws.Cells(i, 4).Value) And ws.Cells(i, 4).Value <> "" Then
                 ws.Cells(i, 4).Value = ws.Cells(i, 4).Value * coef
             End If
             
-            ' Столбец 5: План на объем Begin -> Умножаем
+            ' Столбец 5: План на объем Begin -> Умножаем на коэффициент
             If IsNumeric(ws.Cells(i, 5).Value) And ws.Cells(i, 5).Value <> "" Then
                 ws.Cells(i, 5).Value = ws.Cells(i, 5).Value * coef
             End If
             
-            ' Столбец 6: Переименовываем в м2
+            ' Столбец 6: Переименовываем укрупненную единицу в чистые м2
             ws.Cells(i, 6).Value = "м2"
             
-            ' Столбец 7: Норма расхода ч/ч -> Делим
+            ' Столбец 7: Норма расхода ч/ч -> Жестко делим на коэффициент
             If IsNumeric(ws.Cells(i, 7).Value) And ws.Cells(i, 7).Value <> "" Then
                 ws.Cells(i, 7).Value = ws.Cells(i, 7).Value / coef
             End If
         End If
     Next i
     
+    ' Возвращаем обновление экрана в исходное состояние
     Application.ScreenUpdating = True
-    MsgBox "Готово! Все единицы приведены к м2, объемы и нормы жестко пересчитаны.", vbInformation, "Успех"
+    
+    MsgBox "Контроль завершен! Укрупненные единицы приведены к м2. Строки с обычными м2 полностью защищены от изменений.", vbInformation, "Успех"
 End Sub
+
 
 ```
 
