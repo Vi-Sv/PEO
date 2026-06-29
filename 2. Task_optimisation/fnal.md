@@ -181,3 +181,130 @@ End Sub
 
 **Масштабируемость:**
 С целью гарантированной проверки работы макроса он был запущен на каждом листе вручную. Везде нужно знать меру и границы: отказываясь от масштабирования, мы приняли тактическое решение потратить время на ручное применение и локальную проверку. Это гораздо эффективнее, чем тратить слишком много времени на выведение «эталонного» макроса для всех 92 листов с абсолютно неконтролируемым исходом.В противном случае работа выполнялась бы вслепую, так как возможности быстро проверить весь объём автоматически изменённых данных нет. Это повлекло бы за собой высокие трудозатраты и риски упустить мелкие ошибки.Итог: оператор оценил ситуацию и принял рациональное решение, взвесив затраты времени и безопасность итогового результата.
+
+
+Sub MoveCleanNormalizeAndFormulizeGPR()
+    Dim ws As Worksheet
+    Dim lastRow As Long, i As Long, j As Long, targetRow As Long
+    Dim valToMove As Variant
+    Dim cellValueE As String, cellValueD As String
+    Dim checkUnit As String
+    Dim isTargetFound As Boolean
+    
+    ' Переменные для нормирования
+    Dim rawUnit As String
+    Dim baseUnit As String
+    Dim coeff As Double
+    
+    ' Переменные для финальной фазы формул
+    Dim valF As Double
+    Dim valH As Double
+    Dim udelnoe As Double
+    
+    ' Работаем с активным листом
+    Set ws = ActiveSheet
+    lastRow = ws.Cells(ws.Rows.Count, "D").End(xlUp).Row
+    
+    ' --- ФАЗА 1: РЕВЕРСИВНЫЙ ПЕРЕНОС ТРУДОЗАТРАТ ---
+    For i = 2 To lastRow
+        If Trim(ws.Cells(i, "E").Value) = "чел-час" Then
+            valToMove = ws.Cells(i, "F").Value
+            ws.Cells(i, "F").Value = ""
+            
+            isTargetFound = False
+            targetRow = 2
+            
+            For j = (i - 1) To 2 Step -1
+                checkUnit = Trim(ws.Cells(j, "E").Value)
+                If checkUnit <> "чел-час" And checkUnit <> "чел-час(м)" And checkUnit <> "маш-час" Then
+                    targetRow = j
+                    isTargetFound = True
+                    Exit For
+                End If
+            Next j
+            
+            If isTargetFound Then
+                ws.Cells(targetRow, "H").Value = valToMove
+            End If
+        End If
+    Next i
+    
+    ' --- ФАЗА 2: ТОТАЛЬНАЯ ЗАЧИСТКА МУСОРА И ПУСТОТ ---
+    For i = lastRow To 2 Step -1
+        cellValueE = Trim(ws.Cells(i, "E").Value)
+        cellValueD = Trim(ws.Cells(i, "D").Value)
+        
+        If cellValueE = "чел-час" Or cellValueE = "чел-час(м)" Or cellValueE = "маш-час" Then
+            ws.Rows(i).Delete
+        ElseIf cellValueD = "" Then
+            ws.Rows(i).Delete
+        End If
+    Next i
+    
+    ' ЖЕСТКИЙ ПЕРЕСЧЕТ ГРАНИЦЫ №1: Обновляем lastRow строго после удаления строк
+    ' Это не дает Фазе 3 провалиться в скрытый кэш шаблона ниже таблицы
+    lastRow = ws.Cells(ws.Rows.Count, "D").End(xlUp).Row
+    
+    ' --- ФАЗА 3: НОРМИРОВАНИЕ ЕДИНИЦ ИЗМЕРЕНИЯ И ПРОПОРЦИЙ ---
+    For i = 2 To lastRow
+        rawUnit = LCase(Trim(ws.Cells(i, "E").Value))
+        coeff = 1
+        baseUnit = rawUnit
+        
+        Select Case rawUnit
+            Case "100 м", "100м":       coeff = 100:  baseUnit = "м"
+            Case "1000 м", "1000м":     coeff = 1000: baseUnit = "м"
+            Case "100 м2", "100м2":     coeff = 100:  baseUnit = "м2"
+            Case "1000 м2", "1000м2":   coeff = 1000: baseUnit = "м2"
+            Case "100 м3", "100м3":     coeff = 100:  baseUnit = "м3"
+            Case "1000 м3", "1000м3":   coeff = 1000: baseUnit = "м3"
+            Case "100 т", "100т":       coeff = 100:  baseUnit = "т"
+            Case "1000 т", "1000т":     coeff = 1000: baseUnit = "т"
+            Case "10 шт", "10шт":       coeff = 10:   baseUnit = "шт"
+            Case "100 шт", "100шт":     coeff = 100:  baseUnit = "шт"
+            Case "1000 шт", "1000шт":   coeff = 1000: baseUnit = "шт"
+        End Select
+        
+        If coeff > 1 Then
+            ws.Cells(i, "E").Value = baseUnit
+            If IsNumeric(ws.Cells(i, "F").Value) And ws.Cells(i, "F").Value <> "" Then
+                ws.Cells(i, "F").Value = ws.Cells(i, "F").Value * coeff
+            End If
+            If IsNumeric(ws.Cells(i, "H").Value) And ws.Cells(i, "H").Value <> "" Then
+                ws.Cells(i, "H").Value = ws.Cells(i, "H").Value * coeff
+            End If
+        End If
+    Next i
+    
+    ' ЖЕСТКИЙ ПЕРЕСЧЕТ ГРАНИЦЫ №2: Контрольная фиксация перед Фазой 4
+    lastRow = ws.Cells(ws.Rows.Count, "D").End(xlUp).Row
+    
+    ' --- ФАЗА 4: МАТЕМАТИЧЕСКИЙ РАСЧЕТ, ФОРМУЛЯЦИЯ И ФОРМАТИРОВАНИЕ ---
+    For i = 2 To lastRow
+        ' Проверяем, что ячейка в графе H не пустая
+        If ws.Cells(i, "H").Value <> "" And IsNumeric(ws.Cells(i, "H").Value) Then
+            valH = ws.Cells(i, "H").Value
+            
+            ' Защита от деления на ноль или пустоту в графе F
+            If ws.Cells(i, "F").Value <> "" And IsNumeric(ws.Cells(i, "F").Value) And ws.Cells(i, "F").Value <> 0 Then
+                valF = ws.Cells(i, "F").Value
+                
+                ' 1. Находим удельное значение (H / F) и пишем его в графу G
+                udelnoe = valH / valF
+                ws.Cells(i, "G").Value = udelnoe
+                
+                ' 2. На место исходного значения в графе H вставляем формулу: = F * G
+                ws.Cells(i, "H").Formula = "=F" & i & "*G" & i
+            End If
+        End If
+        
+        ' 3. Приведение граф F, G, H к числовому формату с двумя знаками после запятой (0,00)
+        ' Теперь форматируются строго строки таблицы, пустая зона не затрагивается
+        ws.Cells(i, "F").NumberFormat = "#,##0.00"
+        ws.Cells(i, "G").NumberFormat = "#,##0.00"
+        ws.Cells(i, "H").NumberFormat = "#,##0.00"
+    Next i
+    
+    MsgBox "Конвейер полностью завершен: Расчет и формуляция выполнены!", vbInformation, "Симбиоз ИИ"
+End Sub
+
