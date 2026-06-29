@@ -308,3 +308,144 @@ Sub MoveCleanNormalizeAndFormulizeGPR()
     MsgBox "Конвейер полностью завершен: Расчет и формуляция выполнены!", vbInformation, "Симбиоз ИИ"
 End Sub
 
+
+
+Sub ProcessData_SingleSheet()
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim i As Long, j As Long
+    Dim unitStr As String, cleanUnit As String
+    Dim fVal As Double, gVal As Double, hVal As Double
+    Dim multiplier As Double
+    
+    ' Работаем строго с текущим открытым листом перед глазами
+    Set ws = ActiveSheet
+    lastRow = ws.Cells(ws.Rows.Count, "C").End(xlUp).Row
+    
+    ' --- ОПЕРАЦИЯ 1: Перенос чел-часов вверх ---
+    For i = 2 To lastRow
+        unitStr = CleanText(ws.Cells(i, "E").Value)
+        
+        ' Ищем строго "чел-час" (не "чел-час(м)")
+        If unitStr = "чел-час" Then
+            fVal = Val(Replace(ws.Cells(i, "F").Value, ",", "."))
+            
+            ' Ищем целевую строку выше
+            For j = i - 1 To 1 Step -1
+                Dim prevUnit As String
+                prevUnit = CleanText(ws.Cells(j, "E").Value)
+                
+                ' Останавливаемся на первой строке НЕ чел-час, НЕ чел-час(м) и НЕ маш-час
+                If prevUnit <> "чел-час" And prevUnit <> "чел-час(м)" And prevUnit <> "маш-час" Then
+                    ' Вставляем значение в графу H найденной строки
+                    ws.Cells(j, "H").Value = fVal
+                    Exit For
+                End If
+            Next j
+        End If
+    Next i
+    
+    ' --- ДОПОЛНЕНИЕ: Заполнение пустых ячеек в графе G ---
+    For i = 2 To lastRow
+        unitStr = CleanText(ws.Cells(i, "E").Value)
+        ' Проверяем базовые укрупненные строки
+        If unitStr <> "чел-час" And unitStr <> "чел-час(м)" And unitStr <> "маш-час" And unitStr <> "" And unitStr <> "едизм" Then
+            If Trim(ws.Cells(i, "G").Value) = "" Then
+                fVal = Val(Replace(ws.Cells(i, "F").Value, ",", "."))
+                hVal = Val(Replace(ws.Cells(i, "H").Value, ",", "."))
+                
+                If fVal <> 0 Then
+                    ws.Cells(i, "G").Value = hVal / fVal
+                End If
+            End If
+        End If
+    Next i
+    
+    ' --- ОПЕРАЦИЯ 3: Масштабирование и форматирование Ед. изм. ---
+    For i = 2 To lastRow
+        Dim rawValue As String
+        rawValue = Trim(ws.Cells(i, "E").Value)
+        unitStr = CleanText(rawValue)
+        
+        If unitStr <> "чел-час" And unitStr <> "чел-час(м)" And unitStr <> "маш-час" And unitStr <> "" Then
+            ' Извлекаем только цифры для коэффициента
+            multiplier = GetNumericMultiplier(rawValue)
+            
+            ' Очищаем ячейку от цифр и пробелов, оставляя "красивый" текст (м, м3, м2 и т.д.)
+            cleanUnit = GetCleanUnit(rawValue)
+            ws.Cells(i, "E").Value = cleanUnit
+            
+            ' Если нашли множитель, масштабируем показатели
+            If multiplier > 1 Then
+                fVal = Val(Replace(ws.Cells(i, "F").Value, ",", "."))
+                gVal = Val(Replace(ws.Cells(i, "G").Value, ",", "."))
+                hVal = Val(Replace(ws.Cells(i, "H").Value, ",", "."))
+                
+                ws.Cells(i, "F").Value = fVal * multiplier
+                If gVal <> 0 Then ws.Cells(i, "G").Value = gVal / multiplier
+                If hVal <> 0 Then ws.Cells(i, "H").Value = hVal * multiplier
+            End If
+        End If
+    Next i
+    
+    ' --- ОПЕРАЦИЯ 2: Удаление ресурсных строк (чел-час, маш-час) ---
+    For i = lastRow To 2 Step -1
+        unitStr = CleanText(ws.Cells(i, "E").Value)
+        If unitStr = "чел-час" Or unitStr = "чел-час(м)" Or unitStr = "маш-час" Then
+            ws.Rows(i).Delete
+        End If
+    Next i
+    
+    MsgBox "Готово! Лист обработан.", vbInformation, "GPR Conveyor"
+End Sub
+
+' --- ТВОИ ОРИГИНАЛЬНЫЕ ФУНКЦИИ ПАРСИНГА ---
+Function GetNumericMultiplier(txt As String) As Double
+    Dim i As Integer
+    Dim numStr As String
+    numStr = ""
+    
+    For i = 1 To Len(txt)
+        Dim char As String
+        char = Mid(txt, i, 1)
+        If IsNumeric(char) Then
+            numStr = numStr & char
+        ElseIf char <> " " And char <> Chr(160) Then
+            If i < Len(txt) Or numStr = "" Then Exit For
+            If InStr(1, txt, "м") < i And InStr(1, txt, "т") < i Then Exit For
+        End If
+    Next i
+    
+    If numStr = "" Then
+        GetNumericMultiplier = 1
+    Else
+        GetNumericMultiplier = Val(numStr)
+    End If
+End Function
+
+Function GetCleanUnit(txt As String) As String
+    Dim i As Integer
+    Dim startIdx As Integer
+    startIdx = 1
+    
+    For i = 1 To Len(txt)
+        Dim char As String
+        char = Mid(txt, i, 1)
+        If Not IsNumeric(char) And char <> " " And char <> Chr(160) Then
+            startIdx = i
+            Exit For
+        End If
+    Next i
+    
+    GetCleanUnit = Trim(Mid(txt, startIdx))
+End Function
+
+Function CleanText(txt As Variant) As String
+    Dim res As String
+    res = CStr(txt)
+    res = Replace(res, Chr(160), "")
+    res = Replace(res, " ", "")
+    res = LCase(Trim(res))
+    CleanText = res
+End Function
+
