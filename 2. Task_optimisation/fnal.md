@@ -449,3 +449,148 @@ Function CleanText(txt As Variant) As String
     CleanText = res
 End Function
 
+
+
+----
+Sub MoveCleanNormalizeAndFormulizeGPR_Final()
+    Dim ws As Worksheet
+    Dim lastRow As Long, i As Long, j As Long, targetRow As Long
+    Dim valToMove As Variant
+    Dim cellValueE As String, cellValueD As String
+    Dim checkUnit As String
+    Dim isTargetFound As Boolean
+    
+    ' Переменные для нормирования
+    Dim rawUnit As String
+    Dim baseUnit As String
+    Dim coeff As Double
+    
+    ' Переменные для финальной фазы формул
+    Dim valF As Double
+    Dim valH As Double
+    Dim udelnoe As Double
+    
+    ' Работаем строго с активным листом перед глазами
+    Set ws = ActiveSheet
+    lastRow = ws.Cells(ws.Rows.Count, "D").End(xlUp).Row
+    
+    ' --- ФАЗА 1: РЕВЕРСИВНЫЙ ПЕРЕНОС ТРУДОЗАТРАТ ---
+    For i = 2 To lastRow
+        ' ПРЕДОХРАНИТЕЛЬ: Выжигаем скрытые пробелы Chr(160) и убираем регистр
+        cellValueE = LCase(Replace(Trim(ws.Cells(i, "E").Value), Chr(160), " "))
+        
+        If cellValueE = "чел-час" Then
+            valToMove = ws.Cells(i, "F").Value
+            ws.Cells(i, "F").Value = ""
+            
+            isTargetFound = False
+            targetRow = 2 ' Дефолт на случай утыкания в шапку таблицы
+            
+            For j = (i - 1) To 2 Step -1
+                checkUnit = LCase(Replace(Trim(ws.Cells(j, "E").Value), Chr(160), " "))
+                
+                If checkUnit <> "чел-час" And checkUnit <> "чел-час(м)" And checkUnit <> "маш-час" Then
+                    targetRow = j
+                    isTargetFound = True
+                    Exit For
+                End If
+            Next j
+            
+            If isTargetFound Then
+                ws.Cells(targetRow, "H").Value = valToMove
+            End If
+        End If
+    Next i
+    
+    ' --- ФАЗА 2: ТОТАЛЬНАЯ ЗАЧИСТКА МУСОРА И ПУСТОТ ---
+    For i = lastRow To 2 Step -1
+        cellValueE = LCase(Replace(Trim(ws.Cells(i, "E").Value), Chr(160), " "))
+        cellValueD = Trim(ws.Cells(i, "D").Value)
+        
+        If cellValueE = "чел-час" Or cellValueE = "чел-час(м)" Or cellValueE = "маш-час" Then
+            ws.Rows(i).Delete
+        ElseIf cellValueD = "" Then
+            ws.Rows(i).Delete
+        End If
+    Next i
+    
+    ' Пересчитываем последнюю строку строго после физического удаления мусора
+    lastRow = ws.Cells(ws.Rows.Count, "D").End(xlUp).Row
+    
+    ' --- ФАЗА 3: НОРМИРОВАНИЕ ЕДИНИЦ ИЗМЕРЕНИЯ И ПРОПОРЦИЙ ---
+    For i = 2 To lastRow
+        rawUnit = LCase(Replace(Trim(ws.Cells(i, "E").Value), Chr(160), " "))
+        coeff = 1
+        baseUnit = rawUnit
+        
+        Select Case rawUnit
+            Case "100 м", "100м":       coeff = 100:  baseUnit = "м"
+            Case "1000 м", "1000м":     coeff = 1000: baseUnit = "м"
+            Case "100 м2", "100м2":     coeff = 100:  baseUnit = "м2"
+            Case "1000 м2", "1000м2":   coeff = 1000: baseUnit = "м2"
+            Case "100 м3", "100м3":     coeff = 100:  baseUnit = "м3"
+            Case "1000 м3", "1000м3":   coeff = 1000: baseUnit = "м3"
+            Case "100 т", "100т":       coeff = 100:  baseUnit = "т"
+            Case "1000 т", "1000т":     coeff = 1000: baseUnit = "т"
+            Case "10 шт", "10шт":       coeff = 10:   baseUnit = "шт"
+            Case "100 шт", "100шт":     coeff = 100:  baseUnit = "шт"
+            Case "1000 шт", "1000шт":   coeff = 1000: baseUnit = "шт"
+        End Select
+        
+        If coeff > 1 Then
+            ws.Cells(i, "E").Value = baseUnit
+            
+            ' Объемы (F) умножаются на коэффициент
+            If IsNumeric(ws.Cells(i, "F").Value) And ws.Cells(i, "F").Value <> "" Then
+                ws.Cells(i, "F").Value = ws.Cells(i, "F").Value * coeff
+            End If
+            
+            ' ПРЕДОХРАНИТЕЛЬ: Существующие нормы (G) делятся на коэффициент для сохранения пропорции
+            If IsNumeric(ws.Cells(i, "G").Value) And ws.Cells(i, "G").Value <> "" Then
+                ws.Cells(i, "G").Value = ws.Cells(i, "G").Value / coeff
+            End If
+            
+            ' Перенесенные чел-часы (H) умножаются на коэффициент
+            If IsNumeric(ws.Cells(i, "H").Value) And ws.Cells(i, "H").Value <> "" Then
+                ws.Cells(i, "H").Value = ws.Cells(i, "H").Value * coeff
+            End If
+        End If
+    Next i
+    
+    ' --- ФАЗА 4: МАТЕМАТИЧЕСКИЙ РАСЧЕТ, ФОРМУЛЯЦИЯ И ФОРМАТИРОВАНИЕ ---
+    For i = 2 To lastRow
+        
+        ' ПРЕДОХРАНИТЕЛЬ СТРАХОВКИ НОРМ: Если графа G оказалась пустой, считаем её как H / F
+        If ws.Cells(i, "G").Value = "" Or ws.Cells(i, "G").Value = 0 Then
+            If IsNumeric(ws.Cells(i, "H").Value) And ws.Cells(i, "H").Value <> "" And _
+               IsNumeric(ws.Cells(i, "F").Value) And ws.Cells(i, "F").Value <> "" And ws.Cells(i, "F").Value <> 0 Then
+                ws.Cells(i, "G").Value = ws.Cells(i, "H").Value / ws.Cells(i, "F").Value
+            End If
+        End If
+        
+        ' Проверяем, что ячейка в графе H не пустая
+        If ws.Cells(i, "H").Value <> "" And IsNumeric(ws.Cells(i, "H").Value) Then
+            valH = ws.Cells(i, "H").Value
+            
+            ' Защита от деления на ноль или пустоту в графе F
+            If ws.Cells(i, "F").Value <> "" And IsNumeric(ws.Cells(i, "F").Value) And ws.Cells(i, "F").Value <> 0 Then
+                valF = ws.Cells(i, "F").Value
+                
+                ' 1. Находим удельное значение (H / F) и пишем его в графу G
+                udelnoe = valH / valF
+                ws.Cells(i, "G").Value = udelnoe
+                
+                ' 2. На место исходного значения в графе H вставляем формулу: = F * G
+                ws.Cells(i, "H").Formula = "=F" & i & "*G" & i
+            End If
+        End If
+        
+        ' 3. Приведение граф F, G, H к числовому формату с двумя знаками после запятой (0,00)
+        ws.Cells(i, "F").NumberFormat = "#,##0.00"
+        ws.Cells(i, "G").NumberFormat = "#,##0.00"
+        ws.Cells(i, "H").NumberFormat = "#,##0.00"
+    Next i
+    
+    MsgBox "Конвейер полностью завершен: Очистка, нормирование и расчет выполнены!", vbInformation, "Симбиоз ИИ"
+End Sub
+
