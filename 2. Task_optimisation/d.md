@@ -48,9 +48,7 @@
 Макрос доказал масштабируемость. Однако для обеспечения абсолютной надежности, Оператор применил 92-листовой макрос для очистки, но итоговую обработку провел в контролируемом режиме, подтверждая, что автоматика эффективна в связке с инженерным контролем.
 
 
-
-код взрыв
-
+### Отработано на ГП6
 Sub MoveCleanNormalizeAndFormulizeGPR_DIAGNOSTIC()
     Dim ws As Worksheet
     Dim lastRow As Long, i As Long, j As Long, targetRow As Long
@@ -217,10 +215,10 @@ Sub MoveCleanNormalizeAndFormulizeGPR_DIAGNOSTIC()
 End Sub
 
 
-"нашел - действительно 523 строка - целый кусок старого ГПР5, тогда - разовчиваем новую операцию - на первых фазах сканируем строки от самой первой и по хронологии, как только макрос наткнется на первую волностью пустую строчку, он выделяет весь массив до самого низа и удаляет все то, что т м находится, а после - начинает работу всего макроса"
+
+### код на 92 листа 
 
 
-код на 92 листа 
 Sub Global_GPR_Conveyor_92Sheets_Final()
     Dim ws As Worksheet
     Dim currentSheet As Worksheet
@@ -403,7 +401,7 @@ Sub Global_GPR_Conveyor_92Sheets_Final()
 End Sub
 
 
-код на 1 лист 
+### код на 1 лист
 
 Sub MoveCleanNormalizeAndFormulizeGPR_WithBasementCut()
     Dim ws As Worksheet
@@ -559,6 +557,9 @@ Sub MoveCleanNormalizeAndFormulizeGPR_WithBasementCut()
     
     MsgBox "Конвейер полностью завершен: Подвал отсечен, расчет выполнен!", vbInformation, "Симбиоз ИИ"
 End Sub
+
+
+
 
 
 
