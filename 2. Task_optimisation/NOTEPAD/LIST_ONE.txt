@@ -113,16 +113,18 @@ End If
                 Case "1000 шт", "1000шт":   coeff = 1000: baseUnit = "шт"
             End Select
             
-            If coeff > 1 Then
-                ws.Cells(i, "E").Value = baseUnit
-                If IsNumeric(ws.Cells(i, "F").Value) And ws.Cells(i, "F").Value <> "" Then
-                    ws.Cells(i, "F").Value = ws.Cells(i, "F").Value * coeff
-                End If
-                If IsNumeric(ws.Cells(i, "H").Value) And ws.Cells(i, "H").Value <> "" Then
-                    ws.Cells(i, "H").Value = ws.Cells(i, "H").Value * coeff
-                End If
-            End If
-        Next i
+      If coeff > 1 Then
+    ws.Cells(i, "E").Value = baseUnit
+    
+    ' Объемы (F) умножаются на коэффициент (это правильно, объем растет)
+    If IsNumeric(ws.Cells(i, "F").Value) And ws.Cells(i, "F").Value <> "" Then
+        ws.Cells(i, "F").Value = ws.Cells(i, "F").Value * coeff
+    End If
+    
+    ' ЧЕЛ-ЧАСЫ (H) БОЛЬШЕ НЕ ТРОГАЕМ! Строка умножения графы H на coeff полностью удалена.
+    ' Абсолютные затраты остаются неприкосновенными.
+End If
+Next i
         
         ' --- ФАЗА 4: МАТЕМАТИЧЕСКИЙ РАСЧЕТ И ФОРМУЛЯЦИЯ (Твой оригинал) ---
         For i = 2 To lastRow
