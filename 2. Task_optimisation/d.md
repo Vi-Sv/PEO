@@ -50,6 +50,7 @@
 
 ### Отработано на ГП6
 Sub MoveCleanNormalizeAndFormulizeGPR_DIAGNOSTIC()
+
     Dim ws As Worksheet
     Dim lastRow As Long, i As Long, j As Long, targetRow As Long
     Dim valToMove As Variant
@@ -220,6 +221,7 @@ End Sub
 
 
 Sub Global_GPR_Conveyor_92Sheets_Final()
+
     Dim ws As Worksheet
     Dim currentSheet As Worksheet
     Dim lastRow As Long, i As Long, j As Long, targetRow As Long
@@ -404,6 +406,7 @@ End Sub
 ### код на 1 лист
 
 Sub MoveCleanNormalizeAndFormulizeGPR_WithBasementCut()
+
     Dim ws As Worksheet
     Dim lastRow As Long, i As Long, j As Long, targetRow As Long
     Dim valToMove As Variant
