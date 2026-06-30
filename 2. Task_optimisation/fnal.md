@@ -80,25 +80,24 @@ Sub MoveCleanNormalizeAndFormulizeGPR_WithBasementCut()
     
     If lastRow >= 2 Then
         
-        ' --- ОПЕРАЦИЯ 0: ХИРУРГИЧЕСКОЕ ОТСЕЧЕНИЕ ГРЯЗНОГО ПОДВАЛА ЛИСТА ---
-        ' Сканируем строки сверху вниз. Ищем первую абсолютно пустую строку, где кончается рабочая таблица.
-        firstBlankRow = 0
-        For i = 2 To lastRow + 1
-            ' Строка считается пустой, если в ней нет ни Наименования (D), ни Ед. изм. (E)
-            If Trim(ws.Cells(i, "D").Value) = "" And Trim(ws.Cells(i, "E").Value) = "" Then
-                firstBlankRow = i
-                Exit For ' Первая пустота найдена, останавливаем сканирование
-            End If
-        Next i
-        
-        ' Если пустая строка-разделитель найдена, жестко выжигаем всё, что лежит ниже её, до конца листа
-        If firstBlankRow >= 2 Then
-            On Error Resume Next
-            ' Стираем контент ячеек и физически удаляем весь массив подвала до самой последней строки Excel (1048576)
-            ws.Rows(firstBlankRow & ":" & ws.Rows.Count).ClearContents
-            ws.Rows(firstBlankRow & ":" & ws.Rows.Count).Delete
-            On Error GoTo 0
-        End If
+      ' --- ОПЕРАЦИЯ 0: БРОНИРОВАННОЕ ОТСЕЧЕНИЕ ПОДВАЛА С ДВОЙНЫМ ЧЕК-ПОИНТОМ ---
+firstBlankRow = 0
+For i = 2 To lastRow
+    ' Условие: Текущая и следующая строки (D и E) абсолютно пусты
+    If Trim(ws.Cells(i, "D").Value) = "" And Trim(ws.Cells(i, "E").Value) = "" And _
+       Trim(ws.Cells(i + 1, "D").Value) = "" And Trim(ws.Cells(i + 1, "E").Value) = "" Then
+        firstBlankRow = i
+        Exit For ' Гарантированный подвал найден
+    End If
+Next i
+
+' Удаление данных при подтверждении подвала
+If firstBlankRow >= 2 Then
+    On Error Resume Next
+    ws.Rows(firstBlankRow & ":" & ws.Rows.Count).ClearContents
+    ws.Rows(firstBlankRow & ":" & ws.Rows.Count).Delete
+    On Error GoTo 0
+End If
         
         ' Пересчитываем реальную нижнюю границу чистой таблицы после отсечения подвала
         lastRow = ws.Cells(ws.Rows.Count, "D").End(xlUp).Row
