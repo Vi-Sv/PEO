@@ -32,24 +32,29 @@ Sub MoveCleanNormalizeAndFormulizeGPR_WithBasementCut()
     
     If lastRow >= 2 Then
         
-      ' --- ОПЕРАЦИЯ 0: БРОНИРОВАННОЕ ОТСЕЧЕНИЕ ПОДВАЛА С ДВОЙНЫМ ЧЕК-ПОИНТОМ ---
-firstBlankRow = 0
-For i = 2 To lastRow
-    ' Условие: Текущая и следующая строки (D и E) абсолютно пусты
-    If Trim(ws.Cells(i, "D").Value) = "" And Trim(ws.Cells(i, "E").Value) = "" And _
-       Trim(ws.Cells(i + 1, "D").Value) = "" And Trim(ws.Cells(i + 1, "E").Value) = "" Then
-        firstBlankRow = i
-        Exit For ' Гарантированный подвал найден
-    End If
-Next i
+    ' --- СКАНЕР МАССИВА ПУСТОТЫ (ЗАМЕНА ОПЕРАЦИИ 0) ---
+    Dim blankCounter As Long, requiredBlanks As Long
+    requiredBlanks = 5 ' Требуется 5 пустых строк подряд для удаления
+    firstBlankRow = 0
+    blankCounter = 0
+    
+    For i = 2 To lastRow
+        If Trim(ws.Cells(i, "D").Value) = "" And Trim(ws.Cells(i, "E").Value) = "" Then
+            blankCounter = blankCounter + 1
+            If blankCounter = requiredBlanks Then
+                firstBlankRow = (i - requiredBlanks + 1)
+                Exit For
+            End If
+        Else
+            blankCounter = 0 ' Сброс счетчика при наличии данных
+        End If
+    Next i
 
-' Удаление данных при подтверждении подвала
-If firstBlankRow >= 2 Then
-    On Error Resume Next
-    ws.Rows(firstBlankRow & ":" & ws.Rows.Count).ClearContents
-    ws.Rows(firstBlankRow & ":" & ws.Rows.Count).Delete
-    On Error GoTo 0
-End If
+    If firstBlankRow >= 2 Then
+        On Error Resume Next
+        ws.Rows(firstBlankRow & ":" & ws.Rows.Count).ClearContents
+        On Error GoTo 0
+    End If
         
         ' Пересчитываем реальную нижнюю границу чистой таблицы после отсечения подвала
         lastRow = ws.Cells(ws.Rows.Count, "D").End(xlUp).Row
