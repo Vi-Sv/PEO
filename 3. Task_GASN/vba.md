@@ -1,4 +1,4 @@
-VBA
+
 Sub ApplyAllGESNNorms()
     Dim ws As Worksheet
     Dim lastRow As Long
@@ -135,3 +135,6 @@ Sub ApplyAllGESNNorms()
     
     MsgBox "Данные успешно внесены.", vbInformation, "Профессиональный режим"
 End Sub
+
+Если возникнут другие замечания по ходу тестов макроса, укажите конкретную ошибку. Напишите "Тест пройден", когда процесс завершится успешно.
+
