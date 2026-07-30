@@ -1,4 +1,4 @@
-Sub HideZerosWithFontColorOptimized()
+Sub HideZerosAndKeepOrange()
     Dim ws As Worksheet, lastRow As Long, lastCol As Long, i As Long
     Dim valA As String, valB As String
     Dim rngSubgroups As Range, rngMainLines As Range, rngOthers As Range
@@ -16,6 +16,10 @@ Sub HideZerosWithFontColorOptimized()
     
     If lastRow < 3 Or lastCol < 3 Then Exit Sub
     
+    Dim totalRng As Range
+    Set totalRng = ws.Range(ws.Cells(3, 3), ws.Cells(lastRow, lastCol))
+    totalRng.FormatConditions.Delete
+    
     For i = 3 To lastRow
         valA = Trim(CStr(ws.Cells(i, "A").Value))
         valB = Trim(CStr(ws.Cells(i, "B").Value))
@@ -30,22 +34,29 @@ Sub HideZerosWithFontColorOptimized()
     Next i
     
     If Not rngSubgroups Is Nothing Then
-        rngSubgroups.FormatConditions.Delete
         Set cf = rngSubgroups.FormatConditions.Add(Type:=xlCellValue, Operator:=xlEqual, Formula1:="0")
         cf.Font.Color = RGB(38, 38, 38)
+        cf.SetFirstPriority
     End If
     
     If Not rngMainLines Is Nothing Then
-        rngMainLines.FormatConditions.Delete
         Set cf = rngMainLines.FormatConditions.Add(Type:=xlCellValue, Operator:=xlEqual, Formula1:="0")
         cf.Font.Color = RGB(43, 56, 75)
+        cf.SetFirstPriority
     End If
     
     If Not rngOthers Is Nothing Then
-        rngOthers.FormatConditions.Delete
         Set cf = rngOthers.FormatConditions.Add(Type:=xlCellValue, Operator:=xlEqual, Formula1:="0")
         cf.Font.Color = RGB(255, 255, 255)
+        cf.SetFirstPriority
     End If
+    
+    Set cf = totalRng.FormatConditions.Add(Type:=xlCellValue, Operator:=xlNotEqual, Formula1:="0")
+    With cf.Font
+        .Color = RGB(228, 108, 10)
+        .Bold = True
+        .Italic = True
+    End With
     
     With Application
         .ScreenUpdating = True
