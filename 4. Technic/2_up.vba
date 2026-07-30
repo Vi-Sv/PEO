@@ -18,10 +18,10 @@ Sub InsertFormulasToReportScalableFinal()
     Set wsTech = ThisWorkbook.Sheets("Техника")
     
     lastRowReport = wsReport.Cells(wsReport.Rows.Count, "B").End(xlUp).Row
-    lastColReport = wsReport.Cells(1, wsReport.Columns.Count).End(xlToLeft).Column
+    lastColReport = wsReport.Cells(3, wsReport.Columns.Count).End(xlToLeft).Column
     
     lastRowTech = wsTech.Cells(wsTech.Rows.Count, "B").End(xlUp).Row
-    lastColTech = wsTech.Cells(1, wsTech.Columns.Count).End(xlToLeft).Column
+    lastColTech = wsTech.Cells(4, wsTech.Columns.Count).End(xlToLeft).Column
     
     colEndTech = Split(wsTech.Cells(1, lastColTech).Address, "$")(1)
     colShift1Tech = Split(wsTech.Cells(1, lastColTech + 1).Address, "$")(1)
